@@ -1,0 +1,1 @@
+"./ADXL362.obj" "./CC2650_LAUNCHXL.obj" "./Communication.obj" "./ccfg.obj" "./main.obj" "../CC2650_LAUNCHXL.cmd" -l"configPkg/linker.cmd" -l"/Users/Fangming/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/cc26xxware_2_24_03_17272/driverlib/bin/ccs/driverlib.lib" -llibc.a 
