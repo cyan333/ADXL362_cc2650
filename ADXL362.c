@@ -45,12 +45,19 @@
 /******************************************************************************/
 #include "ADXL362.h"
 #include "Communication.h"
-
+#include <ti/drivers/PIN.h>
 /******************************************************************************/
 /************************* Variables Declarations *****************************/
 /******************************************************************************/
 char selectedRange = 0;
 
+/******************************************************************************/
+/***************************** Define Variables *******************************/
+/******************************************************************************/
+
+#define CHIP_SELECT             IOID_11
+
+#define SPI_MSG_LENGTH          3
 /******************************************************************************/
 /************************ Functions Definitions *******************************/
 /******************************************************************************/
@@ -87,11 +94,25 @@ char ADXL362_Init(void)
  *
  * @return None.
 *******************************************************************************/
-void ADXL362_SetRegisterValue(unsigned short registerValue,
-                              unsigned char  registerAddress,
-                              unsigned char  bytesNumber)
+//void ADXL362_SetRegisterValue(unsigned short registerValue,
+//                              unsigned char  registerAddress,
+//                              unsigned char  bytesNumber)
+//{
+//    unsigned char buffer[4] = {0, 0, 0, 0};
+//
+//    buffer[0] = ADXL362_WRITE_REG;
+//    buffer[1] = registerAddress;
+//    buffer[2] = (registerValue & 0x00FF);
+//    buffer[3] = (registerValue >> 8);
+//    SPI_Write(ADXL362_SLAVE_ID, buffer, bytesNumber + 2);
+//}
+
+void ADXL362_SetRegisterValue(
+                                unsigned short  registerValue,
+                                unsigned char   registerAddress,
+                                unsigned char   bytesNumber)
 {
-    unsigned char buffer[4] = {0, 0, 0, 0};
+    unsigned char buffer[SPI_MSG_LENGTH] = {0, 0, 0};
 
     buffer[0] = ADXL362_WRITE_REG;
     buffer[1] = registerAddress;
