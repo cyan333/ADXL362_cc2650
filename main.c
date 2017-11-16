@@ -98,6 +98,8 @@ void ADXL362_SetPowerMode(unsigned char standbyORmeasure);
 
 void ADXL362_ReadXYZ(unsigned char* x, unsigned char* y, unsigned char* z);
 
+void ADXL362_fallDetection(void);
+
 /*
  * Application LED pin configuration table:
  *   - All LEDs board LEDs are off.
@@ -129,13 +131,39 @@ Void ADXL362Fxn(UArg arg0, UArg arg1)
         spiTransaction.txBuf = (Ptr)masterTxBuffer;
         spiTransaction.rxBuf = (Ptr)masterRxBuffer;
         ADXL362_SoftwareReset();
+
+
+        //sets free fall threshold to 600 mg.
+        ADXL362_WriteRegisterValue(ADXL362_REG_THRESH_INACT_L, 0x96);
+
+        //sets free fall time to 30 ms
+        ADXL362_WriteRegisterValue(ADXL362_REG_TIME_INACT_L, 0x03);
+
+        //enables absolute inactivity detection.
+        ADXL362_WriteRegisterValue(ADXL362_REG_ACT_INACT_CTL, 0x04);
+
+        //map the inactivity interrupt to INT1
+        ADXL362_WriteRegisterValue(ADXL362_REG_INTMAP1, 0x20);
+
+        //±8 g range, 100 Hz ODR
+        ADXL362_WriteRegisterValue(ADXL362_REG_FILTER_CTL, 0x93);
+
+        //begin measurement
         ADXL362_SetPowerMode(ADXL362_REG_PARTID);
+
+        System_printf("setup Done\n");
+
+        System_flush();
+
+
+
+//        ADXL362_fallDetection();
+//        ADXL362_SetPowerMode(ADXL362_REG_PARTID);
 while(1){
 
         //Soft Reset
 
-        ADXL362_ReadRegisterValue(ADXL362_REG_XDATA);
-//        ADXL362_ReadXYZ(xdata,ydata,zdata);
+      ADXL362_ReadXYZ(xdata,ydata,zdata);
 //    ADXL362_ReadRegisterValue(ADXL362_REG_XDATA_L);
 //        System_printf("Done\n");
 
@@ -250,13 +278,39 @@ void ADXL362_ReadXYZ(unsigned char* x, unsigned char* y, unsigned char* z)
     PIN_setOutputValue(csPinHandle, IOID_11, 0);
 
     ADXL362_ReadRegisterValue(ADXL362_REG_XDATA_L);
+
+    int temp = 0.065 * ((masterRxBuffer[9]<<8)+masterRxBuffer[8]);
+    // /1000(8/2)
 //    *x = masterRxBuffer[2] ;
-    System_printf("xvalue: %d", (masterRxBuffer[2]<<8)+masterRxBuffer[3]);
-    System_printf("\tyvalue: %d", (masterRxBuffer[4]<<8)+masterRxBuffer[5]);
-    System_printf("\tzvalue: %d", (masterRxBuffer[6]<<8)+masterRxBuffer[7]);
-    System_printf("\ttemp: %d\n", ((masterRxBuffer[8]<<8)+masterRxBuffer[9]));
+    System_printf("xvalue: %d", (masterRxBuffer[3]<<8)+masterRxBuffer[2]);
+    System_printf("\tyvalue: %d", (masterRxBuffer[5]<<8)+masterRxBuffer[4]);
+    System_printf("\tzvalue: %d", (masterRxBuffer[7]<<8)+masterRxBuffer[6]);
+    System_printf("\ttemp: %d\n", temp);
     PIN_setOutputValue(csPinHandle, IOID_11, 1);
     Task_sleep(50*1000/Clock_tickPeriod); //sleep 50ms
 }
 
+void ADXL362_fallDetection(void){
+    //sets free fall threshold to 600 mg.
+    ADXL362_WriteRegisterValue(ADXL362_REG_THRESH_INACT_L, 0x96);
+
+    //sets free fall time to 30 ms
+    ADXL362_WriteRegisterValue(ADXL362_REG_TIME_INACT_L, 0x03);
+
+    //enables absolute inactivity detection.
+    ADXL362_WriteRegisterValue(ADXL362_REG_ACT_INACT_CTL, 0x04);
+
+    //map the inactivity interrupt to INT1
+    ADXL362_WriteRegisterValue(ADXL362_REG_INTMAP1, 0x20);
+
+    //±8 g range, 100 Hz ODR
+    ADXL362_WriteRegisterValue(ADXL362_REG_FILTER_CTL, 0x93);
+
+    //begin measurement
+    ADXL362_WriteRegisterValue(ADXL362_REG_POWER_CTL, 0x20);
+
+    System_printf("Done\n");
+
+    System_flush();
+}
 
