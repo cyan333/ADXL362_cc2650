@@ -1,6 +1,6 @@
 #
 # This file was generated based on the configuration script:
-#     /Users/Fangming/Documents/CCS_Workspace/empty_CC2650_LAUNCHXL_TI/empty.cfg
+#     /Users/Fangming/Documents/MQP/uC/ADXL362_cc2650/empty.cfg
 #
 # This makefile may be included in other makefiles that need to build
 # the libraries containing the compiled source files generated as
@@ -14,7 +14,7 @@
 #
 # The absolute path to the generated source directory (at the time the
 # sources were generated) is:
-#    /Users/Fangming/Documents/CCS_Workspace/empty_CC2650_LAUNCHXL_TI/src
+#    /Users/Fangming/Documents/MQP/uC/ADXL362_cc2650/src
 #
 GEN_SRC_DIR ?= ../src
 

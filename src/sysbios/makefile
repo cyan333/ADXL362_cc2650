@@ -16,7 +16,7 @@ BIOS_INC  = -I"/Users/Fangming/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_
 
 TARGET_INC = -I"/Users/Fangming/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/"
 
-INCS = $(BIOS_INC) $(TARGET_INC)  --include_path="/Users/Fangming/Documents/CCS_Workspace/empty_CC2650_LAUNCHXL_TI" --include_path="/Users/Fangming/Documents/CCS_Workspace/empty_CC2650_LAUNCHXL_TI" --include_path="/Users/Fangming/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/cc26xxware_2_24_03_17272" --include_path="/Applications/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.4.LTS/include"  -I/Users/Fangming/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/ 
+INCS = $(BIOS_INC) $(TARGET_INC)  --include_path="/Users/Fangming/Documents/MQP/uC/ADXL362_cc2650" --include_path="/Users/Fangming/Documents/MQP/uC/ADXL362_cc2650" --include_path="/Users/Fangming/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/cc26xxware_2_24_03_17272" --include_path="/Applications/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.4.LTS/include"  -I/Users/Fangming/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/ 
 
 CC = /Applications/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.4.LTS/bin/armcl -c $(CCOPTS) -I /Applications/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.4.LTS/include
 ASM = /Applications/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.4.LTS/bin/armcl -c $(CCOPTS) -I /Applications/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.4.LTS/include

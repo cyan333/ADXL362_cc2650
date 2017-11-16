@@ -61,10 +61,8 @@
 #define TASKSTACKSIZE   1024
 
 /* SPI Board */
-//#define Board_SPI0_MISO                     IOID_8
-//#define Board_SPI0_MOSI                     IOID_9
-//#define Board_SPI0_CLK                      IOID_10
-//#define Board_SPI0_CS                       IOID_13
+
+#define CHIP_SELECT             IOID_11
 
 Task_Struct task0Struct;
 Char task0Stack[TASKSTACKSIZE];
@@ -73,9 +71,19 @@ Char task0Stack[TASKSTACKSIZE];
 static PIN_Handle csPinHandle;
 static PIN_State csPinState;
 
+SPI_Handle      spi;
+SPI_Params      spiParams;
+UInt transferOK;
+SPI_Transaction spiTransaction;
+
 #define SPI_MSG_LENGTH    3
-unsigned char masterRxBuffer[SPI_MSG_LENGTH] = {0,0,0,0};
-unsigned char masterTxBuffer[SPI_MSG_LENGTH] = {0,0,0,0};
+unsigned char masterRxBuffer[SPI_MSG_LENGTH] = {0,0,0};
+unsigned char masterTxBuffer[SPI_MSG_LENGTH] = {0,0,0};
+
+
+void ADXL362_ReadRegisterValue(  unsigned char   registerAddress );
+void ADXL362_WriteRegisterValue(  unsigned char  registerValue,
+                                  unsigned char   registerAddress);
 
 
 /*
@@ -84,25 +92,16 @@ unsigned char masterTxBuffer[SPI_MSG_LENGTH] = {0,0,0,0};
  */
 PIN_Config CSpinTable[] = {
 
-    IOID_11 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,
+    CHIP_SELECT | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,
     PIN_TERMINATE
 };
 
 /*
- *  ======== heartBeatFxn ========
- *  Toggle the Board_LED0. The Task_sleep is determined by arg0 which
- *  is configured for the heartBeat Task instance.
+ *  ======== ADXL362 Fxn ========
+ *
  */
-Void heartBeatFxn(UArg arg0, UArg arg1)
+Void ADXL362Fxn(UArg arg0, UArg arg1)
 {
-        SPI_Handle      spi;
-        SPI_Params      spiParams;
-        UInt transferOK;
-        SPI_Transaction spiTransaction;
-
-//        uint8_t         transmitBuffer[1];
-//        uint8_t         receiveBuffer[3];
-
 
 
         SPI_Params_init(&spiParams);
@@ -113,79 +112,16 @@ Void heartBeatFxn(UArg arg0, UArg arg1)
             else {
                 System_printf("SPI initialized\n");
             }
-while(1){
         spiTransaction.count = SPI_MSG_LENGTH;
         spiTransaction.txBuf = (Ptr)masterTxBuffer;
         spiTransaction.rxBuf = (Ptr)masterRxBuffer;
 
-        PIN_setOutputValue(csPinHandle, IOID_11, 0);
-        masterTxBuffer[0] = ADXL362_WRITE_REG;
-        masterTxBuffer[1] = ADXL362_REG_SOFT_RESET;
-        masterTxBuffer[2] = ADXL362_RESET_KEY;
-        /* Initiate SPI transfer */
-        transferOK = SPI_transfer(spi, &spiTransaction);
+while(1){
 
-        if(transferOK) {
-            /* Print contents of master receive buffer */
-            System_printf("Master: %s\n", masterRxBuffer[0]);
-        }
-        else {
-            System_printf("Unsuccessful master SPI transfer");
-        }
-        PIN_setOutputValue(csPinHandle, IOID_11, 1);
-
-        Task_sleep(10*1000/Clock_tickPeriod); //sleep 10ms
-        ///////////////////////////////////////////////////
-
-        spiTransaction.count = 3;
-        spiTransaction.txBuf = (Ptr)masterTxBuffer;
-        spiTransaction.rxBuf = (Ptr)masterRxBuffer;
-
-
-        PIN_setOutputValue(csPinHandle, IOID_11, 0);
-        masterTxBuffer[0] = ADXL362_WRITE_REG;
-        masterTxBuffer[1] = ADXL362_REG_POWER_CTL;
-        masterTxBuffer[2] = ADXL362_REG_PARTID;
-
-        /* Initiate SPI transfer */
-        transferOK = SPI_transfer(spi, &spiTransaction);
-
-        if(transferOK) {
-            /* Print contents of master receive buffer */
-            System_printf("1111Master: %s\n", masterRxBuffer);
-        }
-        else {
-            System_printf("Unsuccessful master SPI transfer");
-        }
-
-        PIN_setOutputValue(csPinHandle, IOID_11, 1);
-        Task_sleep(50*1000/Clock_tickPeriod); //sleep 10ms
-
-        spiTransaction.count = 3;
-        spiTransaction.txBuf = (Ptr)masterTxBuffer;
-        spiTransaction.rxBuf = (Ptr)masterRxBuffer;
-
-
-        PIN_setOutputValue(csPinHandle, IOID_11, 0);
-        masterTxBuffer[0] = ADXL362_READ_REG;
-        masterTxBuffer[1] = ADXL362_REG_XDATA_L;
-        masterTxBuffer[2] = 0x00;
-
-        /* Initiate SPI transfer */
-        transferOK = SPI_transfer(spi, &spiTransaction);
-
-        if(transferOK) {
-            /* Print contents of master receive buffer */
-            System_printf("1111Master: %s\n", masterRxBuffer);
-        }
-        else {
-            System_printf("Unsuccessful master SPI transfer");
-        }
-
-        PIN_setOutputValue(csPinHandle, IOID_11, 1);
-        Task_sleep(50*1000/Clock_tickPeriod); //sleep 10ms
-        /* Deinitialize SPI */
-
+        //Soft Reset
+        ADXL362_WriteRegisterValue(ADXL362_REG_SOFT_RESET, ADXL362_RESET_KEY);
+        ADXL362_WriteRegisterValue(ADXL362_REG_POWER_CTL, ADXL362_REG_PARTID);
+        ADXL362_ReadRegisterValue(ADXL362_REG_XDATA);
 
         System_printf("Done\n");
 
@@ -231,7 +167,7 @@ int main(void)
     taskParams.arg0 = 1000000 / Clock_tickPeriod;
     taskParams.stackSize = TASKSTACKSIZE;
     taskParams.stack = &task0Stack;
-    Task_construct(&task0Struct, (Task_FuncPtr)heartBeatFxn, &taskParams, NULL);
+    Task_construct(&task0Struct, (Task_FuncPtr)ADXL362Fxn, &taskParams, NULL);
 
 
     System_printf("Starting the example\nSystem provider is set to SysMin. "
@@ -244,3 +180,54 @@ int main(void)
 
     return (0);
 }
+
+
+
+/******************************************************************************/
+/************************ Functions Definitions *******************************/
+/******************************************************************************/
+
+
+void ADXL362_WriteRegisterValue(  unsigned char  registerValue,
+                                  unsigned char   registerAddress)
+{
+    PIN_setOutputValue(csPinHandle, CHIP_SELECT, 0);
+    masterTxBuffer[0] = ADXL362_WRITE_REG;
+    masterTxBuffer[1] = registerValue;
+    masterTxBuffer[2] = registerAddress;
+
+    transferOK = SPI_transfer(spi, &spiTransaction);
+
+    if(transferOK) {
+        System_printf("Transfer Done\n");
+    }
+    else {
+        System_printf("Unsuccessful master SPI transfer");
+    }
+    PIN_setOutputValue(csPinHandle, CHIP_SELECT, 1);
+
+    Task_sleep(50*1000/Clock_tickPeriod); //sleep 10ms
+}
+
+
+void ADXL362_ReadRegisterValue(  unsigned char   registerAddress )
+{
+    PIN_setOutputValue(csPinHandle, IOID_11, 0);
+    masterTxBuffer[0] = ADXL362_READ_REG;
+    masterTxBuffer[1] = registerAddress;
+    masterTxBuffer[2] = 0x00;
+
+    transferOK = SPI_transfer(spi, &spiTransaction);
+
+    if(transferOK) {
+        System_printf("1111Master: %d\n", masterRxBuffer[2]);
+    }
+    else {
+        System_printf("Unsuccessful master SPI transfer");
+    }
+
+    PIN_setOutputValue(csPinHandle, IOID_11, 1);
+    Task_sleep(50*1000/Clock_tickPeriod); //sleep 50ms
+}
+
+
