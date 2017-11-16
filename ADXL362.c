@@ -180,31 +180,31 @@ void ADXL362_GetFifoValue(unsigned char* pBuffer, unsigned short bytesNumber)
  *
  * @return None.
 *******************************************************************************/
-void ADXL362_SoftwareReset(void)
-{
-    ADXL362_SetRegisterValue(ADXL362_RESET_KEY, ADXL362_REG_SOFT_RESET, 1);
-}
-
-/***************************************************************************//**
- * @brief Places the device into standby/measure mode.
- *
- * @param pwrMode - Power mode.
- *                  Example: 0 - standby mode.
- *                  1 - measure mode.
- *
- * @return None.
-*******************************************************************************/
-void ADXL362_SetPowerMode(unsigned char pwrMode)
-{
-    unsigned char oldPowerCtl = 0;
-    unsigned char newPowerCtl = 0;
-
-    ADXL362_GetRegisterValue(&oldPowerCtl, ADXL362_REG_POWER_CTL, 1);
-    newPowerCtl = oldPowerCtl & ~ADXL362_POWER_CTL_MEASURE(0x3);
-    newPowerCtl = newPowerCtl |
-                  (pwrMode * ADXL362_POWER_CTL_MEASURE(ADXL362_MEASURE_ON));
-    ADXL362_SetRegisterValue(newPowerCtl, ADXL362_REG_POWER_CTL, 1);
-}
+//void ADXL362_SoftwareReset(void)
+//{
+//    ADXL362_SetRegisterValue(ADXL362_RESET_KEY, ADXL362_REG_SOFT_RESET, 1);
+//}
+//
+///***************************************************************************//**
+// * @brief Places the device into standby/measure mode.
+// *
+// * @param pwrMode - Power mode.
+// *                  Example: 0 - standby mode.
+// *                  1 - measure mode.
+// *
+// * @return None.
+//*******************************************************************************/
+//void ADXL362_SetPowerMode(unsigned char pwrMode)
+//{
+//    unsigned char oldPowerCtl = 0;
+//    unsigned char newPowerCtl = 0;
+//
+//    ADXL362_GetRegisterValue(&oldPowerCtl, ADXL362_REG_POWER_CTL, 1);
+//    newPowerCtl = oldPowerCtl & ~ADXL362_POWER_CTL_MEASURE(0x3);
+//    newPowerCtl = newPowerCtl |
+//                  (pwrMode * ADXL362_POWER_CTL_MEASURE(ADXL362_MEASURE_ON));
+//    ADXL362_SetRegisterValue(newPowerCtl, ADXL362_REG_POWER_CTL, 1);
+//}
 
 /***************************************************************************//**
  * @brief Selects the measurement range.

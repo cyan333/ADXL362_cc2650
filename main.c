@@ -71,20 +71,32 @@ Char task0Stack[TASKSTACKSIZE];
 static PIN_Handle csPinHandle;
 static PIN_State csPinState;
 
-SPI_Handle      spi;
-SPI_Params      spiParams;
-UInt transferOK;
-SPI_Transaction spiTransaction;
+static SPI_Handle       spi;
+static SPI_Params       spiParams;
+static UInt             transferOK;
+static SPI_Transaction  spiTransaction;
 
 #define SPI_MSG_LENGTH    3
 unsigned char masterRxBuffer[SPI_MSG_LENGTH] = {0,0,0};
 unsigned char masterTxBuffer[SPI_MSG_LENGTH] = {0,0,0};
 
+/******************************************************************************/
+/************************ Functions Declarations ******************************/
+/******************************************************************************/
+/*! Writes data into a register. */
+void ADXL362_WriteRegisterValue(  unsigned char registerValue,
+                                  unsigned char registerAddress);
 
+/*! Performs a burst read of a specified number of registers. */
 void ADXL362_ReadRegisterValue(  unsigned char   registerAddress );
-void ADXL362_WriteRegisterValue(  unsigned char  registerValue,
-                                  unsigned char   registerAddress);
 
+/*! Resets the device via SPI communication bus. */
+void ADXL362_SoftwareReset(void);
+
+/*! Places the device into standby/measure mode. */
+void ADXL362_SetPowerMode(unsigned char standbyORmeasure);
+
+void ADXL362_ReadXYZ(unsigned char* x, unsigned char* y, unsigned char* z);
 
 /*
  * Application LED pin configuration table:
@@ -102,8 +114,9 @@ PIN_Config CSpinTable[] = {
  */
 Void ADXL362Fxn(UArg arg0, UArg arg1)
 {
-
-
+    unsigned char xdata;
+    unsigned char ydata;
+    unsigned char zdata;
         SPI_Params_init(&spiParams);
         spi = SPI_open(Board_SPI0, &spiParams);
         if (spi == NULL) {
@@ -115,30 +128,21 @@ Void ADXL362Fxn(UArg arg0, UArg arg1)
         spiTransaction.count = SPI_MSG_LENGTH;
         spiTransaction.txBuf = (Ptr)masterTxBuffer;
         spiTransaction.rxBuf = (Ptr)masterRxBuffer;
-
+        ADXL362_SoftwareReset();
+        ADXL362_SetPowerMode(ADXL362_REG_PARTID);
 while(1){
 
         //Soft Reset
-        ADXL362_WriteRegisterValue(ADXL362_REG_SOFT_RESET, ADXL362_RESET_KEY);
-        ADXL362_WriteRegisterValue(ADXL362_REG_POWER_CTL, ADXL362_REG_PARTID);
-        ADXL362_ReadRegisterValue(ADXL362_REG_XDATA);
 
-        System_printf("Done\n");
+        ADXL362_ReadRegisterValue(ADXL362_REG_XDATA);
+//        ADXL362_ReadXYZ(xdata,ydata,zdata);
+//    ADXL362_ReadRegisterValue(ADXL362_REG_XDATA_L);
+//        System_printf("Done\n");
 
         System_flush();
 }
         SPI_close(spi);
-//        while(1) {
-//            PIN_setOutputValue(ledPinHandle, IOID_13, 0);
-//            transmitBuffer[0] = 0x0B;
-//            spiTransaction.count = 1;
-//            spiTransaction.txBuf = transmitBuffer;
-//            //spiTransaction.rxBuf = receiveBuffer;
-//            SPI_transfer(spi, &spiTransaction);
-//            PIN_setOutputValue(ledPinHandle, IOID_13, 1);
-//        }
 
-//        SPI_close(spi);
 
 }
 
@@ -187,6 +191,13 @@ int main(void)
 /************************ Functions Definitions *******************************/
 /******************************************************************************/
 
+void ADXL362_SoftwareReset(void){
+    ADXL362_WriteRegisterValue(ADXL362_REG_SOFT_RESET, ADXL362_RESET_KEY);
+}
+
+void ADXL362_SetPowerMode(unsigned char standbyORmeasure){
+    ADXL362_WriteRegisterValue(ADXL362_REG_POWER_CTL, standbyORmeasure);
+}
 
 void ADXL362_WriteRegisterValue(  unsigned char  registerValue,
                                   unsigned char   registerAddress)
@@ -212,6 +223,7 @@ void ADXL362_WriteRegisterValue(  unsigned char  registerValue,
 
 void ADXL362_ReadRegisterValue(  unsigned char   registerAddress )
 {
+
     PIN_setOutputValue(csPinHandle, IOID_11, 0);
     masterTxBuffer[0] = ADXL362_READ_REG;
     masterTxBuffer[1] = registerAddress;
@@ -226,6 +238,23 @@ void ADXL362_ReadRegisterValue(  unsigned char   registerAddress )
         System_printf("Unsuccessful master SPI transfer");
     }
 
+    PIN_setOutputValue(csPinHandle, IOID_11, 1);
+    Task_sleep(50*1000/Clock_tickPeriod); //sleep 50ms
+}
+
+void ADXL362_ReadXYZ(unsigned char* x, unsigned char* y, unsigned char* z)
+{
+    unsigned char masterRxBuffer[10] = {0,0,0,0,0,0,0,0,0,0};
+    spiTransaction.count = 10;
+    spiTransaction.rxBuf = (Ptr)masterRxBuffer;
+    PIN_setOutputValue(csPinHandle, IOID_11, 0);
+
+    ADXL362_ReadRegisterValue(ADXL362_REG_XDATA_L);
+//    *x = masterRxBuffer[2] ;
+    System_printf("xvalue: %d", (masterRxBuffer[2]<<8)+masterRxBuffer[3]);
+    System_printf("\tyvalue: %d", (masterRxBuffer[4]<<8)+masterRxBuffer[5]);
+    System_printf("\tzvalue: %d", (masterRxBuffer[6]<<8)+masterRxBuffer[7]);
+    System_printf("\ttemp: %d\n", ((masterRxBuffer[8]<<8)+masterRxBuffer[9]));
     PIN_setOutputValue(csPinHandle, IOID_11, 1);
     Task_sleep(50*1000/Clock_tickPeriod); //sleep 50ms
 }
