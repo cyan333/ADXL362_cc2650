@@ -63,6 +63,8 @@
 /* SPI Board */
 
 #define CHIP_SELECT             IOID_11
+#define FALL_DETECTION          IOID_21
+#define SELECTED_RANGE          8
 
 Task_Struct task0Struct;
 Char task0Stack[TASKSTACKSIZE];
@@ -70,6 +72,11 @@ Char task0Stack[TASKSTACKSIZE];
 /* Pin driver handle */
 static PIN_Handle csPinHandle;
 static PIN_State csPinState;
+static PIN_Handle fallDetectPinHandle;
+static PIN_State fallDetectPinState;
+static PIN_Status fallDetectStatus;
+
+Task_Params taskParams;
 
 static SPI_Handle       spi;
 static SPI_Params       spiParams;
@@ -79,6 +86,17 @@ static SPI_Transaction  spiTransaction;
 #define SPI_MSG_LENGTH    3
 unsigned char masterRxBuffer[SPI_MSG_LENGTH] = {0,0,0};
 unsigned char masterTxBuffer[SPI_MSG_LENGTH] = {0,0,0};
+
+/******************************************************************************/
+/************************ Sturcture Declarations ******************************/
+/******************************************************************************/
+
+struct xyzData {
+   double   x;
+   double   y;
+   double   z;
+   double   temp;
+};
 
 /******************************************************************************/
 /************************ Functions Declarations ******************************/
@@ -96,9 +114,11 @@ void ADXL362_SoftwareReset(void);
 /*! Places the device into standby/measure mode. */
 void ADXL362_SetPowerMode(unsigned char standbyORmeasure);
 
-void ADXL362_ReadXYZ(unsigned char* x, unsigned char* y, unsigned char* z);
+struct xyzData ADXL362_ReadXYZ(void);
 
 void ADXL362_fallDetection(void);
+
+
 
 /*
  * Application LED pin configuration table:
@@ -110,69 +130,99 @@ PIN_Config CSpinTable[] = {
     PIN_TERMINATE
 };
 
+PIN_Config fallDetectionTable[] = {
+
+    FALL_DETECTION | PIN_INPUT_EN | PIN_IRQ_POSEDGE,
+    PIN_TERMINATE
+};
+
 /*
  *  ======== ADXL362 Fxn ========
  *
  */
 Void ADXL362Fxn(UArg arg0, UArg arg1)
 {
-    unsigned char xdata;
-    unsigned char ydata;
-    unsigned char zdata;
-        SPI_Params_init(&spiParams);
-        spi = SPI_open(Board_SPI0, &spiParams);
-        if (spi == NULL) {
-                System_abort("Error initializing SPI\n");
-            }
-            else {
-                System_printf("SPI initialized\n");
-            }
-        spiTransaction.count = SPI_MSG_LENGTH;
-        spiTransaction.txBuf = (Ptr)masterTxBuffer;
-        spiTransaction.rxBuf = (Ptr)masterRxBuffer;
-        ADXL362_SoftwareReset();
+    struct xyzData xyzData1;
+
+    SPI_Params_init(&spiParams);
+    spi = SPI_open(Board_SPI0, &spiParams);
+    if (spi == NULL) {
+            System_abort("Error initializing SPI\n");
+        }
+        else {
+            System_printf("SPI initialized\n");
+        }
+    spiTransaction.count = SPI_MSG_LENGTH;
+    spiTransaction.txBuf = (Ptr)masterTxBuffer;
+    spiTransaction.rxBuf = (Ptr)masterRxBuffer;
+    ADXL362_SoftwareReset();
 
 
-        //sets free fall threshold to 600 mg.
-        ADXL362_WriteRegisterValue(ADXL362_REG_THRESH_INACT_L, 0x96);
+    //sets free fall threshold to 600 mg.
+    ADXL362_WriteRegisterValue(ADXL362_REG_THRESH_INACT_L, 0x96);
 
-        //sets free fall time to 30 ms
-        ADXL362_WriteRegisterValue(ADXL362_REG_TIME_INACT_L, 0x03);
+    //sets free fall time to 30 ms
+    ADXL362_WriteRegisterValue(ADXL362_REG_TIME_INACT_L, 0x03);
 
-        //enables absolute inactivity detection.
-        ADXL362_WriteRegisterValue(ADXL362_REG_ACT_INACT_CTL, 0x04);
+    //enables absolute inactivity detection.
+    ADXL362_WriteRegisterValue(ADXL362_REG_ACT_INACT_CTL, 0x04);
 
-        //map the inactivity interrupt to INT1
-        ADXL362_WriteRegisterValue(ADXL362_REG_INTMAP1, 0x20);
+    //map the inactivity interrupt to INT1
+    ADXL362_WriteRegisterValue(ADXL362_REG_INTMAP1, 0x20);
 
-        //±8 g range, 100 Hz ODR
-        ADXL362_WriteRegisterValue(ADXL362_REG_FILTER_CTL, 0x93);
+    //±8 g range, 100 Hz ODR
+    ADXL362_WriteRegisterValue(ADXL362_REG_FILTER_CTL, 0x93);
 
-        //begin measurement
-        ADXL362_SetPowerMode(ADXL362_REG_PARTID);
+    //begin measurement
+    ADXL362_SetPowerMode(ADXL362_REG_PARTID);
 
-        System_printf("setup Done\n");
+    System_printf("setup Done\n");
 
-        System_flush();
+    System_flush();
 
 
 
 //        ADXL362_fallDetection();
 //        ADXL362_SetPowerMode(ADXL362_REG_PARTID);
-while(1){
+    while(1){
 
         //Soft Reset
-
-      ADXL362_ReadXYZ(xdata,ydata,zdata);
-//    ADXL362_ReadRegisterValue(ADXL362_REG_XDATA_L);
-//        System_printf("Done\n");
-
+        System_printf("dddddd");
         System_flush();
-}
+        xyzData1 = ADXL362_ReadXYZ();
+    //    ADXL362_ReadRegisterValue(ADXL362_REG_XDATA_L);
+        System_printf("xvalue: %f", xyzData1.x);
+        System_printf("\tyvalue: %f", xyzData1.y);
+        System_printf("\tzvalue: %f", xyzData1.z);
+        System_printf("\ttemp: %.6f\n", xyzData1.temp);
+        System_flush();
+    }
         SPI_close(spi);
 
+}
+
+void fallDetectCallbackFxn(PIN_Handle handle, PIN_Id pinId){
+
+    if ( PIN_getInputValue(pinId)){
+        System_printf("`1111111111111111111111111111111111111");
+        int i = 0;
+        while (i<50){
+            i++;
+        }
+        ADXL362_ReadRegisterValue(ADXL362_REG_STATUS);
+        System_flush();
+
+        Task_Params_init(&taskParams);
+            taskParams.arg0 = 1000000 / Clock_tickPeriod;
+            taskParams.stackSize = TASKSTACKSIZE;
+            taskParams.stack = &task0Stack;
+            Task_construct(&task0Struct, (Task_FuncPtr)ADXL362Fxn, &taskParams, NULL);
+    }
 
 }
+
+
+
 
 /*
  *  ======== main ========
@@ -181,7 +231,7 @@ int main(void)
 {
     //Board_initGeneral();
 
-    Task_Params taskParams;
+
 
     /* Call board init functions */
     Board_initGeneral();
@@ -194,7 +244,16 @@ int main(void)
          System_abort("Error initializing board LED pins\n");
      }
 
-    /* Construct heartBeat Task  thread */
+     fallDetectPinHandle = PIN_open(&fallDetectPinState, fallDetectionTable);
+     if(!fallDetectPinHandle) {
+         System_abort("Error initializing button pins\n");
+     }
+
+     if (PIN_registerIntCb(fallDetectPinHandle, &fallDetectCallbackFxn) != 0) {
+         System_abort("Error registering button callback function");
+     }
+
+    /* Construct Task thread */
     Task_Params_init(&taskParams);
     taskParams.arg0 = 1000000 / Clock_tickPeriod;
     taskParams.stackSize = TASKSTACKSIZE;
@@ -270,7 +329,7 @@ void ADXL362_ReadRegisterValue(  unsigned char   registerAddress )
     Task_sleep(50*1000/Clock_tickPeriod); //sleep 50ms
 }
 
-void ADXL362_ReadXYZ(unsigned char* x, unsigned char* y, unsigned char* z)
+struct xyzData ADXL362_ReadXYZ(void)
 {
     unsigned char masterRxBuffer[10] = {0,0,0,0,0,0,0,0,0,0};
     spiTransaction.count = 10;
@@ -279,15 +338,21 @@ void ADXL362_ReadXYZ(unsigned char* x, unsigned char* y, unsigned char* z)
 
     ADXL362_ReadRegisterValue(ADXL362_REG_XDATA_L);
 
-    int temp = 0.065 * ((masterRxBuffer[9]<<8)+masterRxBuffer[8]);
+    struct xyzData xyzData1;
+    xyzData1.x = (masterRxBuffer[3]<<8)+masterRxBuffer[2];
+    xyzData1.x = (xyzData1.x*(SELECTED_RANGE/2))/1000;
+    xyzData1.y = (masterRxBuffer[5]<<8)+masterRxBuffer[4];
+    xyzData1.y = (xyzData1.y*(SELECTED_RANGE/2))/1000;
+    xyzData1.z = (masterRxBuffer[7]<<8)+masterRxBuffer[6];
+    xyzData1.z = (xyzData1.z*(SELECTED_RANGE/2))/1000;
+    xyzData1.temp = 0.065 * ((masterRxBuffer[9]<<8)+masterRxBuffer[8]);
     // /1000(8/2)
 //    *x = masterRxBuffer[2] ;
-    System_printf("xvalue: %d", (masterRxBuffer[3]<<8)+masterRxBuffer[2]);
-    System_printf("\tyvalue: %d", (masterRxBuffer[5]<<8)+masterRxBuffer[4]);
-    System_printf("\tzvalue: %d", (masterRxBuffer[7]<<8)+masterRxBuffer[6]);
-    System_printf("\ttemp: %d\n", temp);
+
     PIN_setOutputValue(csPinHandle, IOID_11, 1);
     Task_sleep(50*1000/Clock_tickPeriod); //sleep 50ms
+
+    return xyzData1;
 }
 
 void ADXL362_fallDetection(void){
